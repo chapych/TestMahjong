@@ -12,6 +12,7 @@ public class Tile : MonoBehaviour, IClickable
 	public TilesTypeSO Type;
 	public Vector3 PositionInLine { get; private set; }
 	public event EventHandler OnPlacingCompleted;
+	Tween moveTween;
 	
 	private void Awake()
 	{
@@ -32,8 +33,7 @@ public class Tile : MonoBehaviour, IClickable
 		
 		Vector2 final = takenTiles.GetAvailablePosition(this);
 		PositionInLine = final;
-		Tween moveTween = moveComponent.MoveTo(final);
-		
+		moveTween = moveComponent.MoveTo(final);
 		moveTween.OnComplete(() => {
 		OnPlacingCompleted?.Invoke(this, EventArgs.Empty);
 		});
@@ -41,10 +41,16 @@ public class Tile : MonoBehaviour, IClickable
 	
 	public void MoveTo(Vector2 position) 
 	{
-		Debug.Log(moveComponent);
-		moveComponent.MoveTo(position);
+		var m = moveComponent.MoveTo(position);
+		Debug.Log(gameObject.name + " " + m.IsActive() + " " + (position - (Vector2)transform.position).x);
 		PositionInLine = position;
+		m.OnComplete(() => Debug.Log(gameObject.name + " ended"));
 	}
+	
+	// private void OnDestroy() 
+	// {
+	// 	DOTween.Kill(this.gameObject);
+	// }
 	
 	
 	

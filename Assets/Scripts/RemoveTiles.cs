@@ -18,7 +18,9 @@ public class RemoveTiles : MonoBehaviour
 					  .SetEase(Ease.InBack)
 					  .OnComplete(()=>
 					  {
-						placedTiles.Remove(tile);
+						
+						// placedTiles.Remove(tile);
+						//Debug.Log(tile.DOKill());
 						Destroy(tile.gameObject);
 					  });
 	}

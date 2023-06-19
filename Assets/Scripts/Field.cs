@@ -27,7 +27,6 @@ public class Field : MonoBehaviour
 
 	private void ActivateChildTiles()
 	{
-		Debug.Log(tiles.Count());
 		foreach (Tile tile in tiles)
 		{
 			tile.SetActive();

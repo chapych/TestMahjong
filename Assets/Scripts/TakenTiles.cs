@@ -67,29 +67,34 @@ public class TakenTiles : MonoBehaviour
 	{
 		return x => x.Value.Type == type;
 	}
-
 	public void OnPlacingCompletedHandle(object sender, EventArgs e)
 	{
 		TilesTypeSO type = (sender as Tile).Type;
 		
 		if(placedTypes[type] == maxSameTypeTiles)
 		{
-			
 			Vector3 shift = cellsDistance * new Vector3(maxSameTypeTiles, 0, 0);
 			var tilesToRemove = PlacedTiles.Nodes()
-										   .Where(HasSameType(type));
+										   .Where(HasSameType(type))
+										   .ToList();
 			LinkedListNode<Tile> nextTile = tilesToRemove.Last().Next;
-			Sequence removingTiles = DOTween.Sequence();
-			
-			foreach(Tile tile in tilesToRemove.Select(x=>x.Value))
+			foreach(var tile in tilesToRemove)
 			{
-				removingTiles.Join(removeTiles.Remove(tile));
-			}	
-			removingTiles.OnComplete(() => PlacedTiles.ActionStarting(nextTile, 
-																		x => x.MoveTo(x.PositionInLine - shift)));
-			
+				PlacedTiles.Remove(tile);
+			}
 			occupiedCells -= maxSameTypeTiles;
 			placedTypes[type] = 0;
+			
+			Sequence removingTiles = DOTween.Sequence();
+			
+			foreach(Tile tile in tilesToRemove.Select(x => x.Value))
+			{
+				removingTiles.Join(removeTiles.Remove(tile));
+			}
+			
+			if(nextTile == null) return;
+			removingTiles.OnComplete(() => PlacedTiles.ActionStarting(nextTile, 
+																		x => x.MoveTo(x.PositionInLine - shift)));
 		}
 	}
 }
