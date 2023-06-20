@@ -7,29 +7,28 @@ using UnityEngine;
 public class Field : MonoBehaviour
 {
 	private Tile[] tiles;
-	[Header("Leave null for top layer field")]
-	[SerializeField] Field upperField;
-	public event Action OnEmptyField;
+	private int tilesCount;
+	[SerializeField] TakenTiles takenTiles;
+	public event Action OnFieldIsEmpty;
 	
-	private void Start()
+	private void Awake()
 	{
-		tiles = GetComponentsInChildren<Tile>().Where(x => x.transform.parent == transform)
-													  .ToArray();
-													  
-		if(upperField is null) ActivateChildTiles();
-		else upperField.OnEmptyField += OnEmptyFieldHandler;
-	}
-	
-	private void OnEmptyFieldHandler()
-	{
-		ActivateChildTiles();
-	}
-
-	private void ActivateChildTiles()
-	{
+		tiles = GetComponentsInChildren<Tile>().ToArray();
+		tilesCount = tiles.Length;
+		takenTiles.OnEmpty += OnEmptyHandle;
 		foreach (Tile tile in tiles)
 		{
-			tile.SetActive();
+			tile.OnMovingEnded += OnMovingEndedHandle;
+			tile.TakenTilesBoard = takenTiles;
 		}
 	}
+	
+	private void OnEmptyHandle()
+	{
+		Debug.Log(tilesCount);
+		if(tilesCount == 0)
+			OnFieldIsEmpty?.Invoke();
+	}
+	
+	private void OnMovingEndedHandle(object sender, EventArgs e) => tilesCount--;
 }

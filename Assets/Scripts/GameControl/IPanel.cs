@@ -1,4 +1,4 @@
-internal interface IPanel
+interface IPanel 
 {
 	void Show();
 	void Hide();

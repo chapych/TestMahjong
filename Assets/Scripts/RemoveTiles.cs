@@ -1,26 +1,46 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using DG.Tweening;
 using UnityEngine;
 
 public class RemoveTiles : MonoBehaviour
 {
-	private LinkedList<Tile> placedTiles;
 	[SerializeField] private float duration = 0.5f;
 	
-	private void Start()
+	public Sequence RemoveGroup(IEnumerable<Tile> tilesToRemove)
 	{
-		placedTiles = GetComponent<TakenTiles>().PlacedTiles;
+		Sequence sequence = GetRemovingSequenceFor(tilesToRemove);
+		return sequence;
 	}
-	public Tween Remove(Tile tile)
+	
+	public void RemoveFromPlacedCollections(TilesTypeSO type, IEnumerable<Tile> tilesToRemove, TakenTiles takenTiles)
+	{
+		foreach (var tile in tilesToRemove)
+		{
+			takenTiles.PlacedTiles.Remove(tile);
+		}
+		takenTiles.OccupiedCells -= takenTiles.MaxSameTypeTiles;
+		takenTiles.PlacedTypes[type] = 0;
+	}
+	
+	private Sequence GetRemovingSequenceFor(IEnumerable<Tile> tilesToRemove)
+	{
+		Sequence removingTiles = DOTween.Sequence();
+		foreach (Tile tile in tilesToRemove)
+		{
+			removingTiles.Join(Remove(tile));
+		}
+
+		return removingTiles;
+	}
+	
+	private Tween Remove(Tile tile)
 	{
 		return tile.transform.DOScale(0, duration)
 					  .SetEase(Ease.InBack)
 					  .OnComplete(()=>
 					  {
-						
-						// placedTiles.Remove(tile);
-						//Debug.Log(tile.DOKill());
 						Destroy(tile.gameObject);
 					  });
 	}

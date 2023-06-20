@@ -7,51 +7,50 @@ using UnityEngine;
 public class Tile : MonoBehaviour, IClickable
 {
 	private Move moveComponent;
-	private bool isBlocked = true;
-	[SerializeField] private TakenTiles takenTiles; //Zenjec
+	private TileUnblocking tileUnblocking;
+	public bool isBlocked = true;
+	[SerializeField] public TakenTiles TakenTilesBoard; 
 	public TilesTypeSO Type;
 	public Vector3 PositionInLine { get; private set; }
-	public event EventHandler OnPlacingCompleted;
-	Tween moveTween;
+	public event EventHandler OnMovingEnded;
 	
-	private void Awake()
+	private void Start()
 	{
 		moveComponent = GetComponent<Move>();
-		
-		OnPlacingCompleted += takenTiles.OnPlacingCompletedHandle;
+		tileUnblocking = GetComponent<TileUnblocking>();
+		TileGraphic graphic = GetComponentInChildren<TileGraphic>();
+
+		if(!isBlocked) graphic.TurnBackToNormal();
+		OnMovingEnded += TakenTilesBoard.OnMovingEndedHandle;
 	}
 	
 	public void SetActive()
 	{
+		TileGraphic graphic = GetComponentInChildren<TileGraphic>();
+		graphic.TurnBackToNormal();
 		isBlocked = false;
 	}
 
-	public void ClickAction()
+	public bool ClickAction()
 	{
-		if(isBlocked) return;
+		if(isBlocked) return false;
 		isBlocked = true;
 		
-		Vector2 final = takenTiles.GetAvailablePosition(this);
+		Vector2 final = TakenTilesBoard.Register(this);
 		PositionInLine = final;
-		moveTween = moveComponent.MoveTo(final);
-		moveTween.OnComplete(() => {
-		OnPlacingCompleted?.Invoke(this, EventArgs.Empty);
+		Tween moveTween = moveComponent.MoveTo(final);
+		
+		moveTween.OnComplete(() => 
+		{
+			OnMovingEnded?.Invoke(this, EventArgs.Empty);
+			tileUnblocking.Unblock();
 		});
+		return true;
 	}
 	
 	public void MoveTo(Vector2 position) 
 	{
 		var m = moveComponent.MoveTo(position);
-		Debug.Log(gameObject.name + " " + m.IsActive() + " " + (position - (Vector2)transform.position).x);
 		PositionInLine = position;
-		m.OnComplete(() => Debug.Log(gameObject.name + " ended"));
-	}
-	
-	// private void OnDestroy() 
-	// {
-	// 	DOTween.Kill(this.gameObject);
-	// }
-	
-	
-	
+	}	
 }

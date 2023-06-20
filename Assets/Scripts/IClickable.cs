@@ -5,5 +5,5 @@ using UnityEngine;
 public interface IClickable 
 {
 	void SetActive();
-	void ClickAction();
+	bool ClickAction();
 }

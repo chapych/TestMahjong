@@ -7,50 +7,61 @@ using UnityEngine;
 
 public class TakenTiles : MonoBehaviour
 {
-	RemoveTiles removeTiles;
-	private Dictionary<TilesTypeSO, int> placedTypes = new Dictionary<TilesTypeSO, int>();
+	private RemoveTiles removeTiles;
+	public Dictionary<TilesTypeSO, int> PlacedTypes = new Dictionary<TilesTypeSO, int>();
 	public LinkedList<Tile> PlacedTiles = new LinkedList<Tile>();
-	public int AvailableCells = 7;
-	private int occupiedCells = 0;
+	public int availableCells = 7;
+	public int OccupiedCells = 0;
 	public float cellsDistance = 30;
-	private int maxSameTypeTiles = 3;
+	public int MaxSameTypeTiles = 3;
+	private Vector3 shift;
+	public event Action OnAllCellsOccupied;
+	public event Action OnEmpty;
 	
 	private void Start()
 	{
 		removeTiles = GetComponent<RemoveTiles>();
+		
+		shift = cellsDistance * new Vector3(1, 0, 0);
 	}
 
-	public Vector2 GetAvailablePosition(Tile tile)
+	public Vector2 Register(Tile tile)
 	{
-		Vector3 shift = cellsDistance * new Vector3(1, 0, 0); 
-		Vector2 cellPosition;
-		
+		Vector2 placedPosition;
 		TilesTypeSO type = tile.Type;
+
+		if (!PlacedTypes.ContainsKey(type)) PlacedTypes[type] = 0;
+		PlacedTypes[type]++;
+
+		placedPosition = GetPosition(tile, type);
 		
-		if(!placedTypes.ContainsKey(type)) placedTypes[type] = 0;
-			placedTypes[type]++;
-			
-		if (placedTypes[type]>1)
-		{
-			cellPosition = GetPositionWithShifting(tile, shift, type);
-		}
-		else
-		{
-			cellPosition = GetPositionWithoutShifting(tile, shift);
-		}
-		occupiedCells++;
-		
-		return cellPosition;
+		OccupiedCells++;
+		return placedPosition;
 	}
 
-	private Vector2 GetPositionWithoutShifting(Tile tile, Vector3 shift)
+	private Vector2 GetPosition(Tile tile, TilesTypeSO type)
 	{
-		Vector2 cellPosition = transform.position + occupiedCells * shift;
+		Vector2 position;
+		switch (PlacedTypes[type])
+		{
+			case > 1:
+				position = GetPositionWithShifting(tile, type);
+				break;
+			default:
+				position = GetPositionWithoutShifting(tile);
+				break;
+		}
+		return position;
+	}
+
+	private Vector2 GetPositionWithoutShifting(Tile tile)
+	{
+		Vector2 cellPosition = transform.position + OccupiedCells * shift;
 		PlacedTiles.AddLast(tile);
 		return cellPosition;
 	}
 
-	private Vector2 GetPositionWithShifting(Tile tile, Vector3 shift, TilesTypeSO type)
+	private Vector2 GetPositionWithShifting(Tile tile, TilesTypeSO type)
 	{
 		Vector2 cellPosition;
 		LinkedListNode<Tile> lastMatching = PlacedTiles.Nodes()
@@ -62,39 +73,36 @@ public class TakenTiles : MonoBehaviour
 		cellPosition = (Vector2)(lastMatching.Value.PositionInLine + shift);
 		return cellPosition;
 	}
+	public void OnMovingEndedHandle(object sender, EventArgs e)
+	{
+		TilesTypeSO type = (sender as Tile).Type;
+		Vector3 shift = cellsDistance * new Vector3(MaxSameTypeTiles, 0, 0);
+		if(PlacedTypes[type] == MaxSameTypeTiles)
+		{
+			var nodesToRemove = PlacedTiles.Nodes()
+										   .Where(HasSameType(type))
+										   .Take(MaxSameTypeTiles);
+			LinkedListNode<Tile> nextNode = nodesToRemove.Last().Next;
 
+			var tilesToRemove = nodesToRemove.Select(x => x.Value)
+											 .ToList();
+			removeTiles.RemoveFromPlacedCollections(type, tilesToRemove, this);
+			Sequence removingTiles = removeTiles.RemoveGroup(tilesToRemove);
+
+			removingTiles.OnComplete(() => PlacedTiles.ActionStarting(nextNode,
+																		x => x.MoveTo(x.PositionInLine - shift)));
+		}
+		else if (OccupiedCells == availableCells)
+		{
+			OnAllCellsOccupied?.Invoke();
+		}
+		if(OccupiedCells == 0) OnEmpty?.Invoke();
+	}
+	
+	public void ChangeMaxAvailableCells(int max) => availableCells = max;
+	
 	private Func<LinkedListNode<Tile>, bool> HasSameType(TilesTypeSO type)
 	{
 		return x => x.Value.Type == type;
-	}
-	public void OnPlacingCompletedHandle(object sender, EventArgs e)
-	{
-		TilesTypeSO type = (sender as Tile).Type;
-		
-		if(placedTypes[type] == maxSameTypeTiles)
-		{
-			Vector3 shift = cellsDistance * new Vector3(maxSameTypeTiles, 0, 0);
-			var tilesToRemove = PlacedTiles.Nodes()
-										   .Where(HasSameType(type))
-										   .ToList();
-			LinkedListNode<Tile> nextTile = tilesToRemove.Last().Next;
-			foreach(var tile in tilesToRemove)
-			{
-				PlacedTiles.Remove(tile);
-			}
-			occupiedCells -= maxSameTypeTiles;
-			placedTypes[type] = 0;
-			
-			Sequence removingTiles = DOTween.Sequence();
-			
-			foreach(Tile tile in tilesToRemove.Select(x => x.Value))
-			{
-				removingTiles.Join(removeTiles.Remove(tile));
-			}
-			
-			if(nextTile == null) return;
-			removingTiles.OnComplete(() => PlacedTiles.ActionStarting(nextTile, 
-																		x => x.MoveTo(x.PositionInLine - shift)));
-		}
 	}
 }

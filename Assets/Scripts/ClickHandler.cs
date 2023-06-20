@@ -6,7 +6,7 @@ public class ClickHandler : MonoBehaviour
 {
 	[SerializeField] private InputReaderSO inputReader;
 	[SerializeField] private Camera mainCamera;
-	private float detectingRadius = 0.1f;
+	private float detectingRadius = float.Epsilon;
 	
 	private void Start()
 	{
@@ -17,12 +17,17 @@ public class ClickHandler : MonoBehaviour
 	private void OnPressHandle()
 	{
 		Vector3 click = mainCamera.ScreenToWorldPoint(inputReader.Position);
-		Collider2D collider = Physics2D.OverlapCircle(click, detectingRadius);
-		if(collider == null) return;
-		if(collider.TryGetComponent<IClickable>(out IClickable clickable))
+		Collider2D[] colliders = Physics2D.OverlapCircleAll(click, detectingRadius);
+		if(colliders.Length == 0) return;
+		foreach(var collider in colliders)
 		{
-			clickable.ClickAction();
+			if(collider.TryGetComponent<IClickable>(out IClickable clickable))
+			{
+				bool hasClicked = clickable.ClickAction();
+				if(hasClicked) break;
+			}
 		}
+		
 	}
 	
 	private void OnDisable() 
